@@ -1,16 +1,16 @@
 import streamlit as st
 from supabase import create_client, Client
-import pandas as pd
+import random
 import re
 
-# --- CONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Command Center", layout="wide", page_icon="🚀")
-
 # --- 1. KONEKSI SUPABASE ---
-# Diambil dari Settings > Secrets di Streamlit Cloud
+# Pastikan URL dan KEY sudah ada di Streamlit Secrets
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
+
+# --- CONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Command Center", layout="wide", page_icon="🚀")
 
 # --- 2. LOGIN SESSION ---
 if 'user_email' not in st.session_state:
