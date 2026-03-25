@@ -93,8 +93,9 @@ with tabs[4]:
 
     st.markdown("---")
     
-    # Kalkulasi Laba Rugi
-    res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).execute()
+    # Ambil data terbaru
+    res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
+    
     if res_fin.data:
         df = pd.DataFrame(res_fin.data)
         d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
@@ -106,10 +107,34 @@ with tabs[4]:
         m2.metric("Pengeluaran", f"Rp {k_val:,.0f}")
         m3.metric("Laba/Rugi", f"Rp {total:,.0f}", delta=float(total))
         
-        st.dataframe(df[['created_at', 'keterangan', 'jenis', 'jumlah']], use_container_width=True)
+        st.write("### 📜 Riwayat Transaksi")
+        
+        # HEADER TABEL (Manual agar sejajar dengan tombol)
+        h1, h2, h3, h4, h5 = st.columns([2, 4, 1.5, 2, 0.5])
+        h1.caption("Tanggal")
+        h2.caption("Keterangan")
+        h3.caption("Jenis")
+        h4.caption("Jumlah")
+        h5.caption("") # Kolom tombol
+        
+        # LIST DATA - Satu baris panjang per data
+        for _, row in df.iterrows():
+            c1, c2, c3, c4, c5 = st.columns([2, 4, 1.5, 2, 0.5])
+            
+            c1.write(f"{row['created_at'][:10]}")
+            c2.write(f"**{row['keterangan']}**")
+            c3.write("In" if row['jenis'] == 'debit' else "Out")
+            c4.write(f"{row['jumlah']:,.0f}")
+            
+            # TOMBOL DELETE (Model pertama yang kamu minta)
+            if c5.button("🗑️", key=f"del_fin_{row['id']}"):
+                delete_item("finance_jurnal", row['id'])
+            
+            # Garis pembatas tipis agar rapat
+            st.markdown("<hr style='margin:0; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+            
     else:
         st.info("Belum ada catatan keuangan.")
-
 # --- TAB 6: RIWAYAT SEMUA ---
 with tabs[5]:
     st.subheader("Log Aktivitas Global")
