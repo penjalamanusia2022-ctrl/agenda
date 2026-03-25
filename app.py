@@ -81,7 +81,7 @@ for i in range(4):
 
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
-    # 1. Ringkasan Saldo (Metric Rapat)
+    # 1. Ringkasan Saldo (Tetap di atas sebagai referensi cepat)
     res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
     
     if res_fin.data:
@@ -90,52 +90,43 @@ with tabs[4]:
         k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
         saldo = d_val - k_val
         
-        # Grid Metric 1 kolom untuk HP agar angka besar tetap terbaca
-        col_m1, col_m2 = st.columns(2)
-        col_m1.metric("Masuk", f"Rp {d_val:,.0f}")
-        col_m2.metric("Keluar", f"Rp {k_val:,.0f}")
-        st.metric("Saldo Bersih", f"Rp {saldo:,.0f}", delta=float(saldo))
+        # Baris Ringkasan Rapat
+        c_in, c_out, c_bal = st.columns(3)
+        c_in.caption(f"In: {d_val:,.0f}")
+        c_out.caption(f"Out: {k_val:,.0f}")
+        c_bal.markdown(f"**Saldo: {saldo:,.0f}**")
     
     st.divider()
 
-    # 2. Form Input (Input Field dibuat vertikal agar mudah diketik di HP)
-    with st.expander("➕ Tambah Data Keuangan", expanded=False):
-        with st.form("mobile_add_fin", clear_on_submit=True):
-            k_f = st.text_input("Keterangan")
-            j_f = st.selectbox("Tipe", ["Debit (Masuk)", "Kredit (Keluar)"])
-            n_f = st.number_input("Nominal", min_value=0, step=1000)
-            if st.form_submit_button("Simpan Transaksi", use_container_width=True):
+    # 2. Form Input (Dibuat vertikal agar nyaman di keyboard HP)
+    with st.expander("➕ Input Transaksi", expanded=False):
+        with st.form("simple_add", clear_on_submit=True):
+            k_f = st.text_input("Ket")
+            j_f = st.selectbox("Tipe", ["Debit", "Kredit"])
+            n_f = st.number_input("Nilai", min_value=0, step=1000)
+            if st.form_submit_button("Simpan", use_container_width=True):
                 if k_f and n_f > 0:
-                    add_jurnal(k_f, "debit" if "Debit" in j_f else "kredit", n_f)
+                    add_jurnal(k_f, j_f.lower(), n_f)
 
-    st.write("### 📜 Riwayat Transaksi")
-
-    # 3. Tampilan List Card (Optimasi Layar HP)
+    # 3. List Jurnal Harian (Satu Baris Rapat)
     if res_fin.data:
         for _, row in df.iterrows():
-            # Container untuk satu baris data
-            with st.container():
-                # Warna teks berdasarkan jenis
-                icon = "🟢" if row['jenis'] == 'debit' else "🔴"
-                sign = "+" if row['jenis'] == 'debit' else "-"
-                
-                # Susunan Kolom: Info di kiri, Tombol di kanan
-                c_data, c_del = st.columns([0.85, 0.15])
-                
-                with c_data:
-                    # Baris atas: Keterangan
-                    st.markdown(f"{icon} **{row['keterangan']}**")
-                    # Baris bawah: Tanggal & Nominal (Font lebih kecil)
-                    st.caption(f"{row['created_at'][:10]} | **{sign} Rp {row['jumlah']:,.0f}**")
-                
-                with c_del:
-                    # Tombol hapus diletakkan di samping agar tidak sengaja terpencet saat scroll
-                    if st.button("🗑️", key=f"del_fin_{row['id']}"):
-                        delete_item("finance_jurnal", row['id'])
-                
-                st.divider() # Garis tipis antar transaksi
+            # Format: Keterangan - Waktu - Nilai - Tombol
+            # Pembagian kolom: 4 (Ket) : 2 (Waktu) : 3 (Nilai) : 1 (Del)
+            c1, c2, c3, c4 = st.columns([4, 2, 3, 1])
+            
+            c1.write(f"{row['keterangan']}")
+            c2.caption(f"{row['created_at'][5:10]}") # Hanya Bulan-Tanggal (MM-DD)
+            c3.write(f"{row['jumlah']:,.0f}")
+            
+            if c4.button("🗑️", key=f"del_fin_{row['id']}"):
+                delete_item("finance_jurnal", row['id'])
+            
+            st.markdown('<div style="margin-top: -15px;"></div>', unsafe_allow_html=True) # Merapatkan jarak antar baris
+            st.divider()
     else:
-        st.info("Belum ada catatan keuangan.")
+        st.info("Belum ada data.")
+        
 # --- TAB 6: RIWAYAT SEMUA ---
 with tabs[5]:
     st.subheader("Log Aktivitas Global")
