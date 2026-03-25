@@ -84,8 +84,8 @@ with tabs[4]:
         saldo = d_val - k_val
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("In", f"{d_val:,.0f}")
-        c2.metric("Out", f"{k_val:,.0f}")
+        c1.metric("Pemasukan", f"{d_val:,.0f}")
+        c2.metric("Pengeluaran", f"{k_val:,.0f}")
         c3.metric("Saldo", f"{saldo:,.0f}")
         
         # Tetap menggunakan dataframe sesuai permintaan sebelumnya agar bisa slider
