@@ -7,7 +7,6 @@ import re
 st.set_page_config(page_title="Command Center", layout="wide", page_icon="🚀")
 
 # --- 1. KONEKSI SUPABASE ---
-# Diambil dari Settings > Secrets di Streamlit Cloud
 url = st.secrets["SUPABASE_URL"]
 key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
@@ -61,27 +60,22 @@ for i in range(4):
     with tabs[i]:
         cat = categories[i]
         st.subheader(f"Daftar {cat.capitalize()}")
-        
-        # Form Input
         with st.form(key=f"form_{cat}", clear_on_submit=True):
             content = st.text_input("Tambah Tugas Baru:")
             if st.form_submit_button("Simpan"):
                 add_task(content, cat)
         
         st.markdown("---")
-        
-        # List Data
         res = supabase.table("tasks").select("*").eq("author", current_user).eq("category", cat).order("created_at", desc=True).execute()
         for item in res.data:
             c1, c2 = st.columns([0.85, 0.15])
             c1.write(f"✅ {item['content']}")
-            if c2.button("🗑️", key=f"del_{item['id']}"):
+            if c2.button("🗑️", key=f"del_t_{item['id']}"):
                 delete_item("tasks", item['id'])
 
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
     st.subheader("Manajemen Keuangan")
-    
     with st.expander("➕ Input Jurnal Baru"):
         with st.form("form_jurnal", clear_on_submit=True):
             ket_fin = st.text_input("Keterangan")
@@ -92,10 +86,7 @@ with tabs[4]:
                 add_jurnal(ket_fin, tipe, jumlah_fin)
 
     st.markdown("---")
-    
-    # Ambil data terbaru
     res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
-    
     if res_fin.data:
         df = pd.DataFrame(res_fin.data)
         d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
@@ -107,39 +98,33 @@ with tabs[4]:
         m2.metric("Pengeluaran", f"Rp {k_val:,.0f}")
         m3.metric("Laba/Rugi", f"Rp {total:,.0f}", delta=float(total))
         
-        st.write("### 📜 Riwayat Transaksi")
-        
-        # HEADER TABEL (Manual agar sejajar dengan tombol)
-        h1, h2, h3, h4, h5 = st.columns([2, 4, 1.5, 2, 0.5])
-        h1.caption("Tanggal")
-        h2.caption("Keterangan")
-        h3.caption("Jenis")
-        h4.caption("Jumlah")
-        h5.caption("") # Kolom tombol
-        
-        # LIST DATA - Satu baris panjang per data
-        for _, row in df.iterrows():
-            c1, c2, c3, c4, c5 = st.columns([2, 4, 1.5, 2, 0.5])
-            
-            c1.write(f"{row['created_at'][:10]}")
-            c2.write(f"**{row['keterangan']}**")
-            c3.write("In" if row['jenis'] == 'debit' else "Out")
-            c4.write(f"{row['jumlah']:,.0f}")
-            
-            # TOMBOL DELETE (Model pertama yang kamu minta)
-            if c5.button("🗑️", key=f"del_fin_{row['id']}"):
-                delete_item("finance_jurnal", row['id'])
-            
-            # Garis pembatas tipis agar rapat
-            st.markdown("<hr style='margin:0; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
-            
+        # Sesuai permintaan: Tetap menggunakan dataframe agar bisa panjang/slider
+        st.dataframe(df[['created_at', 'keterangan', 'jenis', 'jumlah']], use_container_width=True)
     else:
         st.info("Belum ada catatan keuangan.")
-# --- TAB 6: RIWAYAT SEMUA ---
+
+# --- TAB 6: RIWAYAT SEMUA (PUSAT DELETE) ---
 with tabs[5]:
-    st.subheader("Log Aktivitas Global")
-    # Menampilkan 20 aktivitas terbaru dari tasks
-    st.write("**Recent Tasks:**")
-    all_t = supabase.table("tasks").select("*").eq("author", current_user).order("created_at", desc=True).limit(20).execute()
-    for t in all_t.data:
-        st.caption(f"{t['created_at'][:16]} | [{t['category'].upper()}] {t['content']}")
+    st.subheader("📜 Log & Manajemen Data")
+    st.write("Semua inputan kamu bisa dihapus di sini.")
+    
+    col_t, col_f = st.columns(2)
+    
+    with col_t:
+        st.write("**Recent Tasks (Tab 1-4):**")
+        all_t = supabase.table("tasks").select("*").eq("author", current_user).order("created_at", desc=True).limit(20).execute()
+        for t in all_t.data:
+            c1, c2 = st.columns([0.8, 0.2])
+            c1.caption(f"{t['created_at'][5:16]} | [{t['category'].upper()}] {t['content']}")
+            if c2.button("🗑️", key=f"hist_t_{t['id']}"):
+                delete_item("tasks", t['id'])
+
+    with col_f:
+        st.write("**Recent Finance (Tab 5):**")
+        # Kita ambil data keuangan lagi khusus untuk tab ini agar ada tombol delete
+        all_f = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).limit(20).execute()
+        for f in all_f.data:
+            c1, c2 = st.columns([0.8, 0.2])
+            c1.caption(f"{f['created_at'][5:16]} | {f['keterangan']} (Rp {f['jumlah']:,.0f})")
+            if c2.button("🗑️", key=f"hist_f_{f['id']}"):
+                delete_item("finance_jurnal", f['id'])
