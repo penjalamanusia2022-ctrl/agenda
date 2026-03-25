@@ -126,25 +126,8 @@ with tabs[4]:
 with tabs[5]:
     st.subheader("📜 Log Aktivitas & Penghapusan")
     
-    # Bagian 1: RIWAYAT TUGAS (Expander)
-    st.write("### ✅ Riwayat Tugas (Tab 1-4)")
-    all_t = supabase.table("tasks").select("*").eq("author", current_user).order("created_at", desc=True).limit(30).execute()
-    
-    if all_t.data:
-        for t in all_t.data:
-            tgl = t['created_at'][5:16] # MM-DD HH:MM
-            with st.expander(f"📌 {tgl} | [{t['category'].upper()}] {t['content'][:30]}..."):
-                st.write(f"**Isi Tugas:** {t['content']}")
-                st.write(f"**Kategori:** {t['category'].capitalize()}")
-                if st.button("🗑️ Hapus Tugas", key=f"hist_del_t_{t['id']}", use_container_width=True):
-                    delete_item("tasks", t['id'])
-    else:
-        st.info("Belum ada riwayat tugas.")
-
-    st.divider()
-
     # Bagian 2: RIWAYAT KEUANGAN (Expander)
-    st.write("### 💰 Riwayat Keuangan (Tab 5)")
+    st.write("### 💰 Riwayat Keuangan")
     # Ambil data keuangan lagi untuk ditampilkan di sini
     all_f = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).limit(30).execute()
     
@@ -160,3 +143,7 @@ with tabs[5]:
                     delete_item("finance_jurnal", f['id'])
     else:
         st.info("Belum ada riwayat keuangan.")
+
+st.devider()
+
+st.text("Data akan tetap tersimpan sampai Anda menghapusnya")
