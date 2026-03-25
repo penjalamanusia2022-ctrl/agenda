@@ -81,7 +81,9 @@ for i in range(4):
 
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
-    # 1. Ringkasan Saldo (Tetap di atas sebagai referensi cepat)
+    st.subheader("💰 Laporan Keuangan")
+    
+    # 1. AMBIL DATA & RINGKASAN (Metrics)
     res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
     
     if res_fin.data:
@@ -90,7 +92,7 @@ with tabs[4]:
         k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
         saldo = d_val - k_val
         
-        # Baris Ringkasan Rapat
+        # Ringkasan Rapat untuk HP
         c_in, c_out, c_bal = st.columns(3)
         c_in.caption(f"In: {d_val:,.0f}")
         c_out.caption(f"Out: {k_val:,.0f}")
@@ -98,39 +100,37 @@ with tabs[4]:
     
     st.divider()
 
-    # 2. Form Input (Dibuat vertikal agar nyaman di keyboard HP)
+    # 2. FORM INPUT (Vertikal & Expandable)
     with st.expander("➕ Input Transaksi", expanded=False):
-        with st.form("simple_add", clear_on_submit=True):
-            k_f = st.text_input("Ket")
+        with st.form("simple_add_mobile", clear_on_submit=True):
+            k_f = st.text_input("Keterangan")
             j_f = st.selectbox("Tipe", ["Debit", "Kredit"])
-            n_f = st.number_input("Nilai", min_value=0, step=1000)
+            n_f = st.number_input("Nominal", min_value=0, step=1000)
             if st.form_submit_button("Simpan", use_container_width=True):
                 if k_f and n_f > 0:
                     add_jurnal(k_f, j_f.lower(), n_f)
 
-  # 3. List Jurnal Harian (Mobile-Optimized Row)
+    # 3. LIST TRANSAKSI (Ultra Compact Mobile Style)
     if res_fin.data:
-        st.write("---")
+        st.write("### 📜 Riwayat")
         for _, row in df.iterrows():
-            # Kolom: Ket & Waktu (6) | Nilai (3) | Delete (1)
-            c1, c2, c3 = st.columns([6, 3, 1])
-            
-            # Kolom 1: Keterangan & Waktu (Ditumpuk vertikal agar hemat lebar)
-            with c1:
-                st.markdown(f"**{row['keterangan']}**")
-                st.caption(f"{row['created_at'][5:10]}") # MM-DD
-            
-            # Kolom 2: Nilai (Tanda +/- otomatis)
-            with c2:
+            with st.container():
+                # Baris 1: Keterangan (Kiri) & Tanggal (Kanan)
+                c1, c2 = st.columns([0.7, 0.3])
+                c1.markdown(f"**{row['keterangan']}**")
+                c2.markdown(f"<p style='text-align: right; color: gray; font-size: 0.8rem; margin:0;'>{row['created_at'][5:10]}</p>", unsafe_allow_html=True)
+                
+                # Baris 2: Nilai (Kiri) & Tombol Hapus (Kanan)
+                c3, c4 = st.columns([0.7, 0.3])
                 pref = "+" if row['jenis'] == 'debit' else "-"
-                st.write(f"{pref}{row['jumlah']:,.0f}")
-            
-            # Kolom 3: Tombol Delete (Model Pertama)
-            if c3.button("🗑️", key=f"del_fin_{row['id']}"):
-                delete_item("finance_jurnal", row['id'])
-            
-            # Pemisah rapat
-            st.markdown("<hr style='margin: 0px; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+                c3.write(f"{pref} {row['jumlah']:,.0f}")
+                
+                # Tombol hapus (Model Pertama yang diminta)
+                if c4.button("🗑️", key=f"del_fin_{row['id']}", use_container_width=True):
+                    delete_item("finance_jurnal", row['id'])
+                
+                # Pemisah Garis Rapat
+                st.markdown("<hr style='margin: 5px 0px 10px 0px; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
     else:
         st.info("Belum ada data.")
         
