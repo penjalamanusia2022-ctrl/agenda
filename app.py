@@ -13,7 +13,7 @@ supabase: Client = create_client(url, key)
 
 # --- 2. LOGIN SESSION ---
 if 'user_email' not in st.session_state:
-    st.title("🔐 Akses Command Center")
+    st.title("🔐 Agenda Harian")
     email_input = st.text_input("Masukkan Email Anda:", placeholder="contoh: wira@email.com")
     if st.button("Masuk"):
         if email_input and re.match(r"[^@]+@[^@]+\.[^@]+", email_input):
