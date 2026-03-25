@@ -1,17 +1,16 @@
 import streamlit as st
 from supabase import create_client, Client
 import pandas as pd
-import random
 import re
-
-# --- 1. KONEKSI SUPABASE ---
-# Pastikan URL dan KEY sudah ada di Streamlit Secrets
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(url, key)
 
 # --- CONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Command Center", layout="wide", page_icon="🚀")
+
+# --- 1. KONEKSI SUPABASE ---
+# Diambil dari Settings > Secrets di Streamlit Cloud
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 
 # --- 2. LOGIN SESSION ---
 if 'user_email' not in st.session_state:
@@ -79,33 +78,38 @@ for i in range(4):
             if c2.button("🗑️", key=f"del_{item['id']}"):
                 delete_item("tasks", item['id'])
 
-# 3. LIST TRANSAKSI (Ultra Compact - Single Line Style)
+# --- TAB 5: JURNAL & LABA RUGI ---
+with tabs[4]:
+    st.subheader("Manajemen Keuangan")
+    
+    with st.expander("➕ Input Jurnal Baru"):
+        with st.form("form_jurnal", clear_on_submit=True):
+            ket_fin = st.text_input("Keterangan")
+            jenis_fin = st.selectbox("Tipe", ["Debit (Masuk)", "Kredit (Keluar)"])
+            jumlah_fin = st.number_input("Nominal", min_value=0)
+            if st.form_submit_button("Simpan Transaksi"):
+                tipe = "debit" if "Debit" in jenis_fin else "kredit"
+                add_jurnal(ket_fin, tipe, jumlah_fin)
+
+    st.markdown("---")
+    
+    # Kalkulasi Laba Rugi
+    res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).execute()
     if res_fin.data:
-        st.write("### 📜 Riwayat")
-        for _, row in df.iterrows():
-            # Pembagian kolom: 4 (Ket) : 2 (Waktu) : 3 (Nilai) : 1 (Del)
-            # Rasio ini paling pas untuk layar HP agar tidak bertumpuk
-            c1, c2, c3, c4 = st.columns([4, 2, 3, 1])
-            
-            # Kolom 1: Keterangan
-            c1.markdown(f"**{row['keterangan']}**")
-            
-            # Kolom 2: Tanggal (MM-DD)
-            c2.markdown(f"<p style='color: gray; font-size: 0.8rem; margin-top: 5px;'>{row['created_at'][5:10]}</p>", unsafe_allow_html=True)
-            
-            # Kolom 3: Nilai (+/-)
-            pref = "+" if row['jenis'] == 'debit' else "-"
-            c3.write(f"{pref}{row['jumlah']:,.0f}")
-            
-            # Kolom 4: Tombol Delete
-            if c4.button("🗑️", key=f"del_fin_{row['id']}"):
-                delete_item("finance_jurnal", row['id'])
-            
-            # Pemisah garis yang sangat tipis
-            st.markdown("<hr style='margin: 0px 0px 5px 0px; border-top: 1px dashed #eee;'>", unsafe_allow_html=True)
-    else:
-        st.info("Belum ada data.")
+        df = pd.DataFrame(res_fin.data)
+        d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
+        k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
+        total = d_val - k_val
         
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Pendapatan", f"Rp {d_val:,.0f}")
+        m2.metric("Pengeluaran", f"Rp {k_val:,.0f}")
+        m3.metric("Laba/Rugi", f"Rp {total:,.0f}", delta=float(total))
+        
+        st.dataframe(df[['created_at', 'keterangan', 'jenis', 'jumlah']], use_container_width=True)
+    else:
+        st.info("Belum ada catatan keuangan.")
+
 # --- TAB 6: RIWAYAT SEMUA ---
 with tabs[5]:
     st.subheader("Log Aktivitas Global")
