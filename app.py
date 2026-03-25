@@ -81,9 +81,7 @@ for i in range(4):
 
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
-    st.subheader("💰 Laporan Keuangan")
-    
-    # 1. Ringkasan Angka (Sangat Padat)
+    # 1. Ringkasan Saldo (Metric Rapat)
     res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
     
     if res_fin.data:
@@ -92,46 +90,52 @@ with tabs[4]:
         k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
         saldo = d_val - k_val
         
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Pendapatan", f"Rp {d_val:,.0f}")
-        m2.metric("Pengeluaran", f"Rp {k_val:,.0f}")
-        m3.metric("Saldo Akhir", f"Rp {saldo:,.0f}", delta=float(saldo))
-        
-        st.divider()
+        # Grid Metric 1 kolom untuk HP agar angka besar tetap terbaca
+        col_m1, col_m2 = st.columns(2)
+        col_m1.metric("Masuk", f"Rp {d_val:,.0f}")
+        col_m2.metric("Keluar", f"Rp {k_val:,.0f}")
+        st.metric("Saldo Bersih", f"Rp {saldo:,.0f}", delta=float(saldo))
+    
+    st.divider()
 
-        # 2. Form Input Baris Tunggal (Hemat Tempat)
-        with st.expander("➕ Tambah Transaksi", expanded=False):
-            with st.form("quick_add_fin", clear_on_submit=True):
-                c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
-                k_f = c1.text_input("Keterangan")
-                j_f = c2.selectbox("Tipe", ["Debit", "Kredit"])
-                n_f = c3.number_input("Nominal", min_value=0, step=1000)
-                if c4.form_submit_button("Simpan"):
-                    if k_f and n_f > 0:
-                        add_jurnal(k_f, j_f.lower(), n_f)
+    # 2. Form Input (Input Field dibuat vertikal agar mudah diketik di HP)
+    with st.expander("➕ Tambah Data Keuangan", expanded=False):
+        with st.form("mobile_add_fin", clear_on_submit=True):
+            k_f = st.text_input("Keterangan")
+            j_f = st.selectbox("Tipe", ["Debit (Masuk)", "Kredit (Keluar)"])
+            n_f = st.number_input("Nominal", min_value=0, step=1000)
+            if st.form_submit_button("Simpan Transaksi", use_container_width=True):
+                if k_f and n_f > 0:
+                    add_jurnal(k_f, "debit" if "Debit" in j_f else "kredit", n_f)
 
-        # 3. Tabel Data dengan Tombol Hapus
-        # Header Tabel
-        h1, h2, h3, h4, h5 = st.columns([2, 3, 1.5, 2, 1])
-        h1.write("**Tanggal**")
-        h2.write("**Keterangan**")
-        h3.write("**Tipe**")
-        h4.write("**Jumlah**")
-        h5.write("**Aksi**")
-        st.markdown("---")
+    st.write("### 📜 Riwayat Transaksi")
 
-        # Isi Tabel (Looping Baris)
+    # 3. Tampilan List Card (Optimasi Layar HP)
+    if res_fin.data:
         for _, row in df.iterrows():
-            r1, r2, r3, r4, r5 = st.columns([2, 3, 1.5, 2, 1])
-            r1.write(row['created_at'][:10]) # Hanya tanggal
-            r2.write(row['keterangan'])
-            r3.write("🟢 In" if row['jenis'] == 'debit' else "🔴 Out")
-            r4.write(f"Rp {row['jumlah']:,.0f}")
-            if r5.button("🗑️", key=f"del_fin_{row['id']}"):
-                delete_item("finance_jurnal", row['id'])
+            # Container untuk satu baris data
+            with st.container():
+                # Warna teks berdasarkan jenis
+                icon = "🟢" if row['jenis'] == 'debit' else "🔴"
+                sign = "+" if row['jenis'] == 'debit' else "-"
+                
+                # Susunan Kolom: Info di kiri, Tombol di kanan
+                c_data, c_del = st.columns([0.85, 0.15])
+                
+                with c_data:
+                    # Baris atas: Keterangan
+                    st.markdown(f"{icon} **{row['keterangan']}**")
+                    # Baris bawah: Tanggal & Nominal (Font lebih kecil)
+                    st.caption(f"{row['created_at'][:10]} | **{sign} Rp {row['jumlah']:,.0f}**")
+                
+                with c_del:
+                    # Tombol hapus diletakkan di samping agar tidak sengaja terpencet saat scroll
+                    if st.button("🗑️", key=f"del_fin_{row['id']}"):
+                        delete_item("finance_jurnal", row['id'])
+                
+                st.divider() # Garis tipis antar transaksi
     else:
-        st.info("Belum ada data. Silakan tambah transaksi di atas.")
-
+        st.info("Belum ada catatan keuangan.")
 # --- TAB 6: RIWAYAT SEMUA ---
 with tabs[5]:
     st.subheader("Log Aktivitas Global")
