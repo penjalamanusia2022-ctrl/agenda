@@ -4,7 +4,7 @@ import pandas as pd
 import re
 
 # --- CONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Command Center", layout="wide", page_icon="🚀")
+st.set_page_config(page_title="Agenda Harian", layout="wide", page_icon="🚀")
 
 # --- 1. KONEKSI SUPABASE ---
 url = st.secrets["SUPABASE_URL"]
@@ -14,7 +14,7 @@ supabase: Client = create_client(url, key)
 # --- 2. LOGIN SESSION ---
 if 'user_email' not in st.session_state:
     st.title("🔐 Agenda Harian")
-    email_input = st.text_input("Masukkan Email Anda:", placeholder="contoh: wira@email.com")
+    email_input = st.text_input("Masukkan Email Anda:", placeholder="contoh: namamu@email.com")
     if st.button("Masuk"):
         if email_input and re.match(r"[^@]+@[^@]+\.[^@]+", email_input):
             st.session_state.user_email = email_input.strip().lower()
@@ -51,7 +51,7 @@ if st.sidebar.button("Keluar (Logout)"):
     st.rerun()
 
 # --- 5. TAMPILAN UTAMA ---
-st.title("🚀 Personal Command Center")
+st.title("🚀 Agenda Harian")
 tabs = st.tabs(["🔥 Important", "⏰ Urgent", "🤝 Delegate", "🔄 Swip", "💰 Jurnal", "📜 Riwayat Semua"])
 
 # --- TAB 1-4: TO-DO SYSTEM ---
