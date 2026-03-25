@@ -52,20 +52,19 @@ if st.sidebar.button("Keluar (Logout)"):
 
 # --- 5. TAMPILAN UTAMA ---
 st.title("🚀 Personal Command Center")
-tabs = st.tabs(["🔥 Important", "⏰ Urgent", "🤝 Delegate", "🔄 Swip", "💰 Jurnal & Laba Rugi", "📜 Riwayat"])
+tabs = st.tabs(["🔥 Important", "⏰ Urgent", "🤝 Delegate", "🔄 Swip", "💰 Jurnal", "📜 Riwayat Semua"])
 
 # --- TAB 1-4: TO-DO SYSTEM ---
 categories = ["important", "urgent", "delegate", "swip"]
 for i in range(4):
     with tabs[i]:
         cat = categories[i]
-        st.subheader(f"Daftar {cat.capitalize()}")
         with st.form(key=f"form_{cat}", clear_on_submit=True):
-            content = st.text_input("Tambah Tugas Baru:")
-            if st.form_submit_button("Simpan"):
+            content = st.text_input(f"Tambah {cat.capitalize()}:")
+            if st.form_submit_button("Simpan", use_container_width=True):
                 add_task(content, cat)
         
-        st.markdown("---")
+        st.write("---")
         res = supabase.table("tasks").select("*").eq("author", current_user).eq("category", cat).order("created_at", desc=True).execute()
         for item in res.data:
             c1, c2 = st.columns([0.85, 0.15])
@@ -75,56 +74,68 @@ for i in range(4):
 
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
-    st.subheader("Manajemen Keuangan")
-    with st.expander("➕ Input Jurnal Baru"):
-        with st.form("form_jurnal", clear_on_submit=True):
-            ket_fin = st.text_input("Keterangan")
-            jenis_fin = st.selectbox("Tipe", ["Debit (Masuk)", "Kredit (Keluar)"])
-            jumlah_fin = st.number_input("Nominal", min_value=0)
-            if st.form_submit_button("Simpan Transaksi"):
-                tipe = "debit" if "Debit" in jenis_fin else "kredit"
-                add_jurnal(ket_fin, tipe, jumlah_fin)
-
-    st.markdown("---")
+    st.subheader("💰 Keuangan")
     res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
+    
     if res_fin.data:
         df = pd.DataFrame(res_fin.data)
         d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
         k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
-        total = d_val - k_val
+        saldo = d_val - k_val
         
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Pendapatan", f"Rp {d_val:,.0f}")
-        m2.metric("Pengeluaran", f"Rp {k_val:,.0f}")
-        m3.metric("Laba/Rugi", f"Rp {total:,.0f}", delta=float(total))
+        c1, c2, c3 = st.columns(3)
+        c1.metric("In", f"{d_val:,.0f}")
+        c2.metric("Out", f"{k_val:,.0f}")
+        c3.metric("Saldo", f"{saldo:,.0f}")
         
-        # Sesuai permintaan: Tetap menggunakan dataframe agar bisa panjang/slider
+        # Tetap menggunakan dataframe sesuai permintaan sebelumnya agar bisa slider
         st.dataframe(df[['created_at', 'keterangan', 'jenis', 'jumlah']], use_container_width=True)
-    else:
-        st.info("Belum ada catatan keuangan.")
+    
+    st.divider()
+    with st.expander("➕ Input Transaksi Baru"):
+        with st.form("form_jurnal_main", clear_on_submit=True):
+            ket_fin = st.text_input("Keterangan")
+            jenis_fin = st.selectbox("Tipe", ["Debit", "Kredit"])
+            jumlah_fin = st.number_input("Nominal", min_value=0)
+            if st.form_submit_button("Simpan", use_container_width=True):
+                tipe = "debit" if "Debit" in jenis_fin else "kredit"
+                add_jurnal(ket_fin, tipe, jumlah_fin)
 
-# --- TAB 6: RIWAYAT SEMUA (PUSAT DELETE) ---
+# --- TAB 6: RIWAYAT SEMUA (Gaya Expander & Delete Center) ---
 with tabs[5]:
-    st.subheader("📜 Log & Manajemen Data")
-    st.write("Semua inputan kamu bisa dihapus di sini.")
+    st.subheader("📜 Log Aktivitas & Penghapusan")
     
-    col_t, col_f = st.columns(2)
+    # Bagian 1: RIWAYAT TUGAS (Expander)
+    st.write("### ✅ Riwayat Tugas (Tab 1-4)")
+    all_t = supabase.table("tasks").select("*").eq("author", current_user).order("created_at", desc=True).limit(30).execute()
     
-    with col_t:
-        st.write("**Recent Tasks (Tab 1-4):**")
-        all_t = supabase.table("tasks").select("*").eq("author", current_user).order("created_at", desc=True).limit(20).execute()
+    if all_t.data:
         for t in all_t.data:
-            c1, c2 = st.columns([0.8, 0.2])
-            c1.caption(f"{t['created_at'][5:16]} | [{t['category'].upper()}] {t['content']}")
-            if c2.button("🗑️", key=f"hist_t_{t['id']}"):
-                delete_item("tasks", t['id'])
+            tgl = t['created_at'][5:16] # MM-DD HH:MM
+            with st.expander(f"📌 {tgl} | [{t['category'].upper()}] {t['content'][:30]}..."):
+                st.write(f"**Isi Tugas:** {t['content']}")
+                st.write(f"**Kategori:** {t['category'].capitalize()}")
+                if st.button("🗑️ Hapus Tugas", key=f"hist_del_t_{t['id']}", use_container_width=True):
+                    delete_item("tasks", t['id'])
+    else:
+        st.info("Belum ada riwayat tugas.")
 
-    with col_f:
-        st.write("**Recent Finance (Tab 5):**")
-        # Kita ambil data keuangan lagi khusus untuk tab ini agar ada tombol delete
-        all_f = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).limit(20).execute()
+    st.divider()
+
+    # Bagian 2: RIWAYAT KEUANGAN (Expander)
+    st.write("### 💰 Riwayat Keuangan (Tab 5)")
+    # Ambil data keuangan lagi untuk ditampilkan di sini
+    all_f = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).limit(30).execute()
+    
+    if all_f.data:
         for f in all_f.data:
-            c1, c2 = st.columns([0.8, 0.2])
-            c1.caption(f"{f['created_at'][5:16]} | {f['keterangan']} (Rp {f['jumlah']:,.0f})")
-            if c2.button("🗑️", key=f"hist_f_{f['id']}"):
-                delete_item("finance_jurnal", f['id'])
+            tgl_f = f['created_at'][5:16]
+            tipe_f = "📥 Masuk" if f['jenis'] == 'debit' else "📤 Keluar"
+            with st.expander(f"💳 {tgl_f} | {tipe_f} | {f['keterangan'][:20]}..."):
+                st.write(f"**Keterangan:** {f['keterangan']}")
+                st.write(f"**Tipe:** {f['jenis'].capitalize()}")
+                st.write(f"**Nominal:** Rp {f['jumlah']:,.0f}")
+                if st.button("🗑️ Hapus Transaksi", key=f"hist_del_f_{f['id']}", use_container_width=True):
+                    delete_item("finance_jurnal", f['id'])
+    else:
+        st.info("Belum ada riwayat keuangan.")
