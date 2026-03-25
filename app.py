@@ -60,14 +60,24 @@ for i in range(4):
     with tabs[i]:
         cat = categories[i]
         with st.form(key=f"form_{cat}", clear_on_submit=True):
-            content = st.text_input(f"Tambah {cat.capitalize()}:")
-            if st.form_submit_button("Simpan", use_container_width=True):
-                add_task(content, cat)
+            # MENGGUNAKAN text_area UNTUK INPUT PANJANG & ENTER
+            content = st.text_area(
+                f"Tambah {cat.capitalize()}:", 
+                placeholder="Tulis detail tugas di sini... (Gunakan Enter untuk baris baru)",
+                height=250 # Mengatur tinggi kotak input agar nyaman dilihat
+            )
+            
+            if st.form_submit_button("Simpan Permanen", use_container_width=True):
+                if content.strip(): # Memastikan tidak simpan teks kosong
+                    add_task(content, cat)
+                else:
+                    st.warning("Teks tidak boleh kosong.")
         
         st.write("---")
         res = supabase.table("tasks").select("*").eq("author", current_user).eq("category", cat).order("created_at", desc=True).execute()
         for item in res.data:
             c1, c2 = st.columns([0.85, 0.15])
+            # Menggunakan st.write agar format Enter/Baris Baru tetap muncul di tampilan
             c1.write(f"✅ {item['content']}")
             if c2.button("🗑️", key=f"del_t_{item['id']}"):
                 delete_item("tasks", item['id'])
