@@ -110,7 +110,7 @@ with tabs[4]:
         c3.metric("Saldo", f"{saldo:,.0f}")
         
         # Tetap menggunakan dataframe sesuai permintaan sebelumnya agar bisa slider
-        st.dataframe(df[['created_at', 'keterangan', 'jenis', 'jumlah']], use_container_width=True)
+        st.dataframe(df[['keterangan', 'jenis', 'jumlah']], use_container_width=True)
     
     st.divider()
     with st.expander("➕ Input Transaksi Baru"):
