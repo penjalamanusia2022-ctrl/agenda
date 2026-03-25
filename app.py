@@ -81,35 +81,67 @@ for i in range(4):
 
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
-    st.subheader("Manajemen Keuangan")
+    st.subheader("📊 Manajemen Keuangan")
     
-    with st.expander("➕ Input Jurnal Baru"):
-        with st.form("form_jurnal", clear_on_submit=True):
-            ket_fin = st.text_input("Keterangan")
-            jenis_fin = st.selectbox("Tipe", ["Debit (Masuk)", "Kredit (Keluar)"])
-            jumlah_fin = st.number_input("Nominal", min_value=0)
-            if st.form_submit_button("Simpan Transaksi"):
+    # 1. FORM INPUT (Dibuat lebih ringkas)
+    with st.expander("➕ Tambah Transaksi Baru", expanded=False):
+        with st.form("form_jurnal_baru", clear_on_submit=True):
+            col_a, col_b, col_c = st.columns([2, 1, 1.5])
+            with col_a:
+                ket_fin = st.text_input("Keterangan", placeholder="Contoh: Jual Token $DUIT")
+            with col_b:
+                jenis_fin = st.selectbox("Tipe", ["Debit (Masuk)", "Kredit (Keluar)"])
+            with col_c:
+                jumlah_fin = st.number_input("Nominal (Rp)", min_value=0, step=5000)
+            
+            submit_fin = st.form_submit_button("💾 Simpan ke Cloud")
+            if submit_fin:
                 tipe = "debit" if "Debit" in jenis_fin else "kredit"
-                add_jurnal(ket_fin, tipe, jumlah_fin)
+                if ket_fin and jumlah_fin > 0:
+                    add_jurnal(ket_fin, tipe, jumlah_fin)
+                else:
+                    st.warning("Mohon isi keterangan dan nominal.")
 
-    st.markdown("---")
+    st.divider()
     
-    # Kalkulasi Laba Rugi
-    res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).execute()
+    # 2. AMBIL DATA & KALKULASI
+    res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
+    
     if res_fin.data:
         df = pd.DataFrame(res_fin.data)
-        d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
-        k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
-        total = d_val - k_val
+        total_d = df[df['jenis'] == 'debit']['jumlah'].sum()
+        total_k = df[df['jenis'] == 'kredit']['jumlah'].sum()
+        saldo = total_d - total_k
         
+        # Tampilan Ringkasan (Metrics)
         m1, m2, m3 = st.columns(3)
-        m1.metric("Pendapatan", f"Rp {d_val:,.0f}")
-        m2.metric("Pengeluaran", f"Rp {k_val:,.0f}")
-        m3.metric("Laba/Rugi", f"Rp {total:,.0f}", delta=float(total))
+        m1.metric("Pendapatan (In)", f"Rp {total_d:,.0f}")
+        m2.metric("Pengeluaran (Out)", f"Rp {total_k:,.0f}")
+        m3.metric("Laba/Rugi Bersih", f"Rp {saldo:,.0f}", delta=float(saldo))
         
-        st.dataframe(df[['created_at', 'keterangan', 'jenis', 'jumlah']], use_container_width=True)
+        st.markdown("### 📜 Detail Transaksi")
+        
+        # 3. DAFTAR TRANSAKSI DENGAN TOMBOL HAPUS/EDIT
+        for _, item in df.iterrows():
+            with st.container():
+                # Styling warna berdasarkan jenis
+                color = "🟢" if item['jenis'] == 'debit' else "🔴"
+                tgl = item['created_at'][:10]
+                
+                # Baris Transaksi
+                c_icon, c_info, c_amt, c_action = st.columns([0.1, 0.5, 0.25, 0.15])
+                
+                c_icon.write(color)
+                c_info.write(f"**{item['keterangan']}** \n_{tgl}_")
+                c_amt.write(f"Rp {item['jumlah']:,.0f}")
+                
+                # Tombol Hapus (Karena Edit di Streamlit cukup kompleks, kita prioritaskan Hapus)
+                if c_action.button("🗑️", key=f"del_fin_{item['id']}"):
+                    delete_item("finance_jurnal", item['id'])
+                
+                st.divider()
     else:
-        st.info("Belum ada catatan keuangan.")
+        st.info("Belum ada data keuangan terdaftar.")
 
 # --- TAB 6: RIWAYAT SEMUA ---
 with tabs[5]:
