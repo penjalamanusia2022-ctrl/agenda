@@ -108,27 +108,29 @@ with tabs[4]:
                 if k_f and n_f > 0:
                     add_jurnal(k_f, j_f.lower(), n_f)
 
-   # 3. List Jurnal Harian (Ultra Compact Mobile Style)
+  # 3. List Jurnal Harian (Mobile-Optimized Row)
     if res_fin.data:
+        st.write("---")
         for _, row in df.iterrows():
-            with st.container():
-                # Baris 1: Keterangan (Kiri) & Tanggal (Kanan)
-                c1, c2 = st.columns([0.7, 0.3])
-                c1.markdown(f"**{row['keterangan']}**")
-                c2.markdown(f"<p style='text-align: right; color: gray; font-size: 0.8rem;'>{row['created_at'][5:10]}</p>", unsafe_allow_html=True)
-                
-                # Baris 2: Nilai (Kiri) & Tombol Hapus (Kanan)
-                c3, c4 = st.columns([0.7, 0.3])
-                # Menampilkan tanda minus jika kredit agar jelas
-                pref = "-" if row['jenis'] == 'kredit' else "+"
-                c3.write(f"{pref} {row['jumlah']:,.0f}")
-                
-                # Tombol hapus diletakkan di kanan bawah baris tersebut
-                if c4.button("🗑️", key=f"del_fin_{row['id']}", use_container_width=True):
-                    delete_item("finance_jurnal", row['id'])
-                
-                # Garis pemisah tipis dan rapat
-                st.markdown("<hr style='margin: 0px 0px 10px 0px; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+            # Kolom: Ket & Waktu (6) | Nilai (3) | Delete (1)
+            c1, c2, c3 = st.columns([6, 3, 1])
+            
+            # Kolom 1: Keterangan & Waktu (Ditumpuk vertikal agar hemat lebar)
+            with c1:
+                st.markdown(f"**{row['keterangan']}**")
+                st.caption(f"{row['created_at'][5:10]}") # MM-DD
+            
+            # Kolom 2: Nilai (Tanda +/- otomatis)
+            with c2:
+                pref = "+" if row['jenis'] == 'debit' else "-"
+                st.write(f"{pref}{row['jumlah']:,.0f}")
+            
+            # Kolom 3: Tombol Delete (Model Pertama)
+            if c3.button("🗑️", key=f"del_fin_{row['id']}"):
+                delete_item("finance_jurnal", row['id'])
+            
+            # Pemisah rapat
+            st.markdown("<hr style='margin: 0px; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
     else:
         st.info("Belum ada data.")
         
