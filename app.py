@@ -108,22 +108,27 @@ with tabs[4]:
                 if k_f and n_f > 0:
                     add_jurnal(k_f, j_f.lower(), n_f)
 
-    # 3. List Jurnal Harian (Satu Baris Rapat)
+   # 3. List Jurnal Harian (Ultra Compact Mobile Style)
     if res_fin.data:
         for _, row in df.iterrows():
-            # Format: Keterangan - Waktu - Nilai - Tombol
-            # Pembagian kolom: 4 (Ket) : 2 (Waktu) : 3 (Nilai) : 1 (Del)
-            c1, c2, c3, c4 = st.columns([4, 2, 3, 1])
-            
-            c1.write(f"{row['keterangan']}")
-            c2.caption(f"{row['created_at'][5:10]}") # Hanya Bulan-Tanggal (MM-DD)
-            c3.write(f"{row['jumlah']:,.0f}")
-            
-            if c4.button("🗑️", key=f"del_fin_{row['id']}"):
-                delete_item("finance_jurnal", row['id'])
-            
-            st.markdown('<div style="margin-top: -15px;"></div>', unsafe_allow_html=True) # Merapatkan jarak antar baris
-            st.divider()
+            with st.container():
+                # Baris 1: Keterangan (Kiri) & Tanggal (Kanan)
+                c1, c2 = st.columns([0.7, 0.3])
+                c1.markdown(f"**{row['keterangan']}**")
+                c2.markdown(f"<p style='text-align: right; color: gray; font-size: 0.8rem;'>{row['created_at'][5:10]}</p>", unsafe_allow_html=True)
+                
+                # Baris 2: Nilai (Kiri) & Tombol Hapus (Kanan)
+                c3, c4 = st.columns([0.7, 0.3])
+                # Menampilkan tanda minus jika kredit agar jelas
+                pref = "-" if row['jenis'] == 'kredit' else "+"
+                c3.write(f"{pref} {row['jumlah']:,.0f}")
+                
+                # Tombol hapus diletakkan di kanan bawah baris tersebut
+                if c4.button("🗑️", key=f"del_fin_{row['id']}", use_container_width=True):
+                    delete_item("finance_jurnal", row['id'])
+                
+                # Garis pemisah tipis dan rapat
+                st.markdown("<hr style='margin: 0px 0px 10px 0px; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
     else:
         st.info("Belum ada data.")
         
