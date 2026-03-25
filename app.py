@@ -60,28 +60,38 @@ for i in range(4):
     with tabs[i]:
         cat = categories[i]
         with st.form(key=f"form_{cat}", clear_on_submit=True):
-            # MENGGUNAKAN text_area UNTUK INPUT PANJANG & ENTER
             content = st.text_area(
                 f"Tambah {cat.capitalize()}:", 
-                placeholder="Tulis detail tugas di sini... (Gunakan Enter untuk baris baru)",
-                height=250 # Mengatur tinggi kotak input agar nyaman dilihat
+                placeholder="Tulis detail tugas... (Maks 500 kata / 30 baris)",
+                height=200
             )
             
             if st.form_submit_button("Simpan Permanen", use_container_width=True):
-                if content.strip(): # Memastikan tidak simpan teks kosong
-                    add_task(content, cat)
+                # --- LOGIKA VALIDASI SPAM ---
+                word_count = len(content.split())
+                line_count = content.count('\n') + 1
+                
+                if not content.strip():
+                    st.error("⚠️ Konten tidak boleh kosong.")
+                elif word_count > 500:
+                    st.error(f"⚠️ Terlalu panjang! Maksimal 500 kata (Input kamu: {word_count} kata).")
+                elif line_count > 30:
+                    st.error(f"⚠️ Terlalu banyak baris! Maksimal 30 baris (Input kamu: {line_count} baris).")
                 else:
-                    st.warning("Teks tidak boleh kosong.")
+                    # Jika lolos validasi, baru simpan
+                    add_task(content, cat)
+                    st.toast("✅ Tugas berhasil disimpan!", icon="🚀")
         
         st.write("---")
+        # Menampilkan list dengan gaya Expander agar teks panjang tidak memenuhi layar
         res = supabase.table("tasks").select("*").eq("author", current_user).eq("category", cat).order("created_at", desc=True).execute()
         for item in res.data:
-            c1, c2 = st.columns([0.85, 0.15])
-            # Menggunakan st.write agar format Enter/Baris Baru tetap muncul di tampilan
-            c1.write(f"✅ {item['content']}")
-            if c2.button("🗑️", key=f"del_t_{item['id']}"):
-                delete_item("tasks", item['id'])
-
+            # Menggunakan expander agar jika teksnya 30 baris, tetap rapi di HP
+            with st.expander(f"📌 {item['content'][:40]}..."):
+                st.write(item['content'])
+                if st.button("🗑️ Hapus", key=f"del_t_{item['id']}", use_container_width=True):
+                    delete_item("tasks", item['id'])
+                    
 # --- TAB 5: JURNAL & LABA RUGI ---
 with tabs[4]:
     st.subheader("💰 Keuangan")
