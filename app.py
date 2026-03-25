@@ -79,6 +79,7 @@ with tabs[4]:
     
     if res_fin.data:
         df = pd.DataFrame(res_fin.data)
+        df['created_at'] = pd.to_datetime(df['created_at']).dt.date
         d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
         k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
         saldo = d_val - k_val
