@@ -79,58 +79,30 @@ for i in range(4):
             if c2.button("🗑️", key=f"del_{item['id']}"):
                 delete_item("tasks", item['id'])
 
-# --- TAB 5: JURNAL & LABA RUGI ---
-with tabs[4]:
-    st.subheader("💰 Laporan Keuangan")
-    
-    # 1. AMBIL DATA & RINGKASAN (Metrics)
-    res_fin = supabase.table("finance_jurnal").select("*").eq("author", current_user).order("created_at", desc=True).execute()
-    
-    if res_fin.data:
-        df = pd.DataFrame(res_fin.data)
-        d_val = df[df['jenis'] == 'debit']['jumlah'].sum()
-        k_val = df[df['jenis'] == 'kredit']['jumlah'].sum()
-        saldo = d_val - k_val
-        
-        # Ringkasan Rapat untuk HP
-        c_in, c_out, c_bal = st.columns(3)
-        c_in.caption(f"In: {d_val:,.0f}")
-        c_out.caption(f"Out: {k_val:,.0f}")
-        c_bal.markdown(f"**Saldo: {saldo:,.0f}**")
-    
-    st.divider()
-
-    # 2. FORM INPUT (Vertikal & Expandable)
-    with st.expander("➕ Input Transaksi", expanded=False):
-        with st.form("simple_add_mobile", clear_on_submit=True):
-            k_f = st.text_input("Keterangan")
-            j_f = st.selectbox("Tipe", ["Debit", "Kredit"])
-            n_f = st.number_input("Nominal", min_value=0, step=1000)
-            if st.form_submit_button("Simpan", use_container_width=True):
-                if k_f and n_f > 0:
-                    add_jurnal(k_f, j_f.lower(), n_f)
-
-    # 3. LIST TRANSAKSI (Ultra Compact Mobile Style)
+# 3. LIST TRANSAKSI (Ultra Compact - Single Line Style)
     if res_fin.data:
         st.write("### 📜 Riwayat")
         for _, row in df.iterrows():
-            with st.container():
-                # Baris 1: Keterangan (Kiri) & Tanggal (Kanan)
-                c1, c2 = st.columns([0.7, 0.3])
-                c1.markdown(f"**{row['keterangan']}**")
-                c2.markdown(f"<p style='text-align: right; color: gray; font-size: 0.8rem; margin:0;'>{row['created_at'][5:10]}</p>", unsafe_allow_html=True)
-                
-                # Baris 2: Nilai (Kiri) & Tombol Hapus (Kanan)
-                c3, c4 = st.columns([0.7, 0.3])
-                pref = "+" if row['jenis'] == 'debit' else "-"
-                c3.write(f"{pref} {row['jumlah']:,.0f}")
-                
-                # Tombol hapus (Model Pertama yang diminta)
-                if c4.button("🗑️", key=f"del_fin_{row['id']}", use_container_width=True):
-                    delete_item("finance_jurnal", row['id'])
-                
-                # Pemisah Garis Rapat
-                st.markdown("<hr style='margin: 5px 0px 10px 0px; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+            # Pembagian kolom: 4 (Ket) : 2 (Waktu) : 3 (Nilai) : 1 (Del)
+            # Rasio ini paling pas untuk layar HP agar tidak bertumpuk
+            c1, c2, c3, c4 = st.columns([4, 2, 3, 1])
+            
+            # Kolom 1: Keterangan
+            c1.markdown(f"**{row['keterangan']}**")
+            
+            # Kolom 2: Tanggal (MM-DD)
+            c2.markdown(f"<p style='color: gray; font-size: 0.8rem; margin-top: 5px;'>{row['created_at'][5:10]}</p>", unsafe_allow_html=True)
+            
+            # Kolom 3: Nilai (+/-)
+            pref = "+" if row['jenis'] == 'debit' else "-"
+            c3.write(f"{pref}{row['jumlah']:,.0f}")
+            
+            # Kolom 4: Tombol Delete
+            if c4.button("🗑️", key=f"del_fin_{row['id']}"):
+                delete_item("finance_jurnal", row['id'])
+            
+            # Pemisah garis yang sangat tipis
+            st.markdown("<hr style='margin: 0px 0px 5px 0px; border-top: 1px dashed #eee;'>", unsafe_allow_html=True)
     else:
         st.info("Belum ada data.")
         
