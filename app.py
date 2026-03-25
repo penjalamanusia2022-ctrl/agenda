@@ -144,6 +144,4 @@ with tabs[5]:
     else:
         st.info("Belum ada riwayat keuangan.")
 
-st.devider()
-
 st.text("Data akan tetap tersimpan sampai Anda menghapusnya")
